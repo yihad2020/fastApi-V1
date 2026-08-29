@@ -1,0 +1,15 @@
+Command: npm run build
+
+> assignment-recommendation-console@1.0.0 build
+> tsc --noEmit && vite build
+
+vite v8.2.2 building client environment for production...
+transforming...
+✓ 19 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.52 kB │ gzip:  0.32 kB
+dist/assets/index-D0k9Z8Y9.css   10.62 kB │ gzip:  3.11 kB
+dist/assets/index-B3a5eAPJ.js   203.26 kB │ gzip: 63.48 kB
+
+✓ built in 380ms
