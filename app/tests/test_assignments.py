@@ -143,6 +143,58 @@ def test_blank_department_and_skill_are_rejected() -> None:
     assert client.post(ENDPOINT, json=blank_department).status_code == 422
     assert client.post(ENDPOINT, json=blank_skill).status_code == 422
 
+def test_unknown_top_level_field_is_rejected() -> None:
+    body = payload(
+        [employee(1, "Ana", "Engineering", ["Python"])]
+    )
+    body["unexpected"] = True
+
+    response = client.post(ENDPOINT, json=body)
+
+    assert response.status_code == 422
+
+
+def test_unknown_request_field_is_rejected() -> None:
+    body = payload(
+        [employee(1, "Ana", "Engineering", ["Python"])]
+    )
+    body["request"]["unexpected"] = "value"
+
+    response = client.post(ENDPOINT, json=body)
+
+    assert response.status_code == 422
+
+
+def test_unknown_candidate_field_is_rejected() -> None:
+    candidate = employee(1, "Ana", "Engineering", ["Python"])
+    candidate["salary"] = 5000
+
+    response = client.post(
+        ENDPOINT,
+        json=payload([candidate]),
+    )
+
+    assert response.status_code == 422
+
+
+def test_non_positive_employee_id_is_rejected() -> None:
+    for invalid_id in (0, -1):
+        response = client.post(
+            ENDPOINT,
+            json=payload(
+                [
+                    employee(
+                        invalid_id,
+                        "Ana",
+                        "Engineering",
+                        ["Python"],
+                    )
+                ]
+            ),
+        )
+
+        assert response.status_code == 422
+
 
 def test_skill_matching_is_case_insensitive() -> None:
     response = client.post(
@@ -165,6 +217,8 @@ def test_skill_matching_is_case_insensitive() -> None:
             ],
         },
     )
+
+    
 
     assert response.status_code == 200
     result = response.json()["most_qualified"]

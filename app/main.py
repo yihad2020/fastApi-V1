@@ -6,8 +6,18 @@ from uuid import UUID, uuid4
 from fastapi import FastAPI, HTTPException, Query, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    field_validator,
+)
 
+NonBlankString = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1),
+]
 
 def normalize(value: str) -> str:
     """Return a case-insensitive, whitespace-normalized comparison value."""
@@ -60,42 +70,45 @@ app.add_middleware(
 
 Priority = Literal["low", "medium", "high", "urgent"]
 
+class StrictInputModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
 
-class WorkRequestCreate(BaseModel):
+
+class WorkRequestCreate(StrictInputModel):
     """Request information accepted from a client."""
 
-    department: str = Field(max_length=100)
+    department: NonBlankString = Field(max_length=100)
     priority: Priority = "medium"
-    required_skills: list[str] = Field(min_length=1, max_length=20)
+    required_skills: list[NonBlankString] = Field(min_length=1, max_length=20)
 
     @field_validator("department")
     @classmethod
-    def validate_department(cls, value: str) -> str:
+    def validate_department(cls, value: NonBlankString) -> NonBlankString:
         return clean_non_blank(value, "department")
 
     @field_validator("required_skills")
     @classmethod
-    def validate_required_skills(cls, values: list[str]) -> list[str]:
+    def validate_required_skills(cls, values: list[NonBlankString]) -> list[NonBlankString]:
         return clean_skills(values)
 
 
 class AssignmentWorkRequest(WorkRequestCreate):
     """Request information evaluated by the assignment endpoint."""
 
-    id: str = Field(max_length=100)
+    id: NonBlankString = Field(max_length=100)
 
     @field_validator("id")
     @classmethod
-    def validate_id(cls, value: str) -> str:
+    def validate_id(cls, value: str) -> NonBlankString:
         return clean_non_blank(value, "id")
 
 
-class WorkRequestUpdate(BaseModel):
+class WorkRequestUpdate(StrictInputModel):
     """Optional fields accepted when a saved request is updated."""
 
-    department: str | None = Field(default=None, max_length=100)
+    department: NonBlankString | None = Field(default=None, max_length=100)
     priority: Priority | None = None
-    required_skills: list[str] | None = Field(
+    required_skills: list[NonBlankString] | None = Field(
         default=None,
         min_length=1,
         max_length=20,
@@ -103,15 +116,15 @@ class WorkRequestUpdate(BaseModel):
 
     @field_validator("department")
     @classmethod
-    def validate_department(cls, value: str | None) -> str | None:
+    def validate_department(cls, value: NonBlankString | None) -> NonBlankString | None:
         return None if value is None else clean_non_blank(value, "department")
 
     @field_validator("required_skills")
     @classmethod
     def validate_required_skills(
         cls,
-        values: list[str] | None,
-    ) -> list[str] | None:
+        values: list[NonBlankString] | None,
+    ) -> list[NonBlankString] | None:
         return None if values is None else clean_skills(values)
 
 
@@ -124,28 +137,28 @@ class WorkRequest(WorkRequestCreate):
     created_at: datetime
 
 
-class Employee(BaseModel):
+class Employee(StrictInputModel):
     """Candidate who may receive a request."""
 
     id: int = Field(gt=0)
-    name: str = Field(max_length=100)
-    department: str = Field(max_length=100)
-    skills: list[str] = Field(min_length=1, max_length=50)
+    name: NonBlankString = Field(max_length=100)
+    department: NonBlankString = Field(max_length=100)
+    skills: list[NonBlankString] = Field(min_length=1, max_length=50)
     active_requests: int = Field(ge=0, strict=True)
     available: bool = True
 
     @field_validator("name", "department")
     @classmethod
-    def validate_non_blank_text(cls, value: str) -> str:
+    def validate_non_blank_text(cls, value: NonBlankString) -> NonBlankString:
         return clean_non_blank(value, "name or department")
 
     @field_validator("skills")
     @classmethod
-    def validate_skills(cls, values: list[str]) -> list[str]:
+    def validate_skills(cls, values: list[NonBlankString]) -> list[NonBlankString]:
         return clean_skills(values)
 
 
-class AssignmentRequest(BaseModel):
+class AssignmentRequest(StrictInputModel):
     """Required Day 1 request body: one request and its candidates."""
 
     request: AssignmentWorkRequest
@@ -158,19 +171,19 @@ class QualifiedIndividual(BaseModel):
     employee: Employee
     qualification_score: int = Field(ge=0, le=100)
     department_match: bool
-    matched_skills: list[str]
-    missing_skills: list[str]
+    matched_skills: list[NonBlankString]
+    missing_skills: list[NonBlankString]
     reason: str
 
 
 class AssignmentSuggestion(BaseModel):
-    request_id: str
+    request_id: NonBlankString
     most_qualified: QualifiedIndividual
     evaluated_candidates: int
 
 
 class Message(BaseModel):
-    message: str
+    message: NonBlankString
 
 
 # Demo-only storage for the optional CRUD endpoints.
